@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read(*)",
+      "Write(/workspace/**)",
+      "Edit(/workspace/**)"
+    ],
+    "deny": [
+      "Write(/home/claude/.claude/.credentials.json)",
+      "Write(/etc/**)",
+      "Write(/usr/**)"
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+  }
+}

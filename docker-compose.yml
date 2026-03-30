@@ -1,0 +1,34 @@
+services:
+  sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: claude-sandbox:latest
+    container_name: claude-sandbox
+    env_file: .env
+    environment:
+      - TERM=xterm-256color
+    cap_add:
+      - NET_ADMIN
+    cap_drop:
+      - SYS_PTRACE
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      # Auth only — workspace mounts come from per-project compose
+      - claude-sandbox-auth-config:/home/claude/.claude
+      - claude-sandbox-auth-data:/home/claude/.config
+    networks:
+      - sandbox-net
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+volumes:
+  claude-sandbox-auth-config:
+  claude-sandbox-auth-data:
+
+networks:
+  sandbox-net:
+    driver: bridge

@@ -1,0 +1,14 @@
+# Project: test
+services:
+  sandbox:
+    volumes:
+      - ./input:/workspace/input:ro
+      - ./output:/workspace/output
+      - ./projects/test/cases:/workspace/cases
+      # Empty workspace
+    tmpfs:
+      - /workspace/temp:size=2G,uid=1000,gid=1000
+    deploy:
+      resources:
+        limits:
+          memory: 8g

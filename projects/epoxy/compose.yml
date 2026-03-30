@@ -1,0 +1,14 @@
+# Project: epoxy
+services:
+  sandbox:
+    volumes:
+      - ./input:/workspace/input:ro
+      - ./output:/workspace/output
+      - ./projects/epoxy/cases:/workspace/cases
+      - ./projects/epoxy/snapshot:/workspace/project
+    tmpfs:
+      - /workspace/temp:size=2G,uid=1000,gid=1000
+    deploy:
+      resources:
+        limits:
+          memory: 8g
