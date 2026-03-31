@@ -1,11 +1,12 @@
 # Project: epoxy
+# Paths are relative to docker/ (where the base docker-compose.yml lives)
 services:
   sandbox:
     volumes:
-      - ./input:/workspace/input:ro
-      - ./output:/workspace/output
-      - ./projects/epoxy/cases:/workspace/cases
-      - ./projects/epoxy/snapshot:/workspace/project
+      - ../input:/workspace/input:ro
+      - ../output:/workspace/output
+      - ../projects/epoxy/cases:/workspace/cases
+      - ../projects/epoxy/snapshot:/workspace/project
     tmpfs:
       - /workspace/temp:size=2G,uid=1000,gid=1000
     deploy:

@@ -58,7 +58,7 @@ RUN userdel -r node 2>/dev/null || true \
     && usermod -aG plugdev,docker ${USERNAME}
 
 # udev rules
-COPY udev-rules/ /etc/udev/rules.d/
+COPY docker/udev-rules/ /etc/udev/rules.d/
 
 # Workspace
 RUN mkdir -p /workspace/{input,output,output/logs,cases,temp,project} \
@@ -72,14 +72,14 @@ RUN mkdir -p ${GOPATH}/{bin,src,pkg} && chown -R ${USER_UID}:${USER_GID} ${GOPAT
 # Claude Code config
 # Stash originals outside the volume mount so entrypoint can refresh them
 RUN mkdir -p /home/${USERNAME}/.claude /usr/local/share/claude-sandbox
-COPY claude-settings.json /home/${USERNAME}/.claude/settings.local.json
+COPY docker/claude-settings.json /home/${USERNAME}/.claude/settings.local.json
 COPY CLAUDE.md /home/${USERNAME}/.claude/CLAUDE.md
-COPY claude-settings.json /usr/local/share/claude-sandbox/settings.local.json
+COPY docker/claude-settings.json /usr/local/share/claude-sandbox/settings.local.json
 COPY CLAUDE.md /usr/local/share/claude-sandbox/CLAUDE.md
 RUN chown -R ${USER_UID}:${USER_GID} /home/${USERNAME}/.claude
 
 # Scripts
-COPY entrypoint.sh init-firewall.sh auto-deps.sh /usr/local/bin/
+COPY docker/entrypoint.sh docker/init-firewall.sh docker/auto-deps.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/init-firewall.sh /usr/local/bin/auto-deps.sh
 
 USER ${USERNAME}

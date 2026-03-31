@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 PROJECTS_DIR="$SCRIPT_DIR/projects"
+DOCKER_DIR="$SCRIPT_DIR/docker"
 
 # ── Colors ──────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -509,6 +510,7 @@ print_ok "project.env"
 # ── compose.yml (per-project override) ──────────────────────────────
 {
     echo "# Project: $PROJECT_NAME"
+    echo "# Paths are relative to docker/ (where the base docker-compose.yml lives)"
     echo "services:"
     echo "  sandbox:"
 
@@ -531,16 +533,16 @@ print_ok "project.env"
     done
     [ "$HAS_USB" -eq 1 ] && echo "    device_cgroup_rules:" && echo "      - 'c 189:* rwm'"
 
-    # Volumes
+    # Volumes (paths relative to docker/ where the base docker-compose.yml lives)
     echo "    volumes:"
-    echo "      - ./input:/workspace/input:ro"
-    echo "      - ./output:/workspace/output"
-    echo "      - ./projects/${PROJECT_NAME}/cases:/workspace/cases"
+    echo "      - ../input:/workspace/input:ro"
+    echo "      - ../output:/workspace/output"
+    echo "      - ../projects/${PROJECT_NAME}/cases:/workspace/cases"
 
     case "$PROJECT_MODE" in
         bind-rw) echo "      - ${PROJECT_PATH}:/workspace/project" ;;
         bind-ro) echo "      - ${PROJECT_PATH}:/workspace/project:ro" ;;
-        copy)    echo "      - ./projects/${PROJECT_NAME}/snapshot:/workspace/project" ;;
+        copy)    echo "      - ../projects/${PROJECT_NAME}/snapshot:/workspace/project" ;;
         clone)   echo "      # Project cloned at startup into /workspace/project" ;;
         empty)   echo "      # Empty workspace" ;;
     esac
@@ -638,7 +640,7 @@ fi
 # Build
 echo ""
 print_info "Building sandbox image..."
-docker compose build
+docker compose -f "$DOCKER_DIR/docker-compose.yml" build
 print_ok "Image built"
 
 # Launch
@@ -648,7 +650,7 @@ case "$LAUNCH_MODE" in
         print_ok "Launching: $PROJECT_NAME (interactive)"
         echo ""
         docker compose \
-            -f "$SCRIPT_DIR/docker-compose.yml" \
+            -f "$DOCKER_DIR/docker-compose.yml" \
             -f "$PROJECT_DIR/compose.yml" \
             run --rm sandbox claude --dangerously-skip-permissions
         ;;
@@ -656,7 +658,7 @@ case "$LAUNCH_MODE" in
         print_ok "Launching: $PROJECT_NAME (headless)"
         echo ""
         docker compose \
-            -f "$SCRIPT_DIR/docker-compose.yml" \
+            -f "$DOCKER_DIR/docker-compose.yml" \
             -f "$PROJECT_DIR/compose.yml" \
             run --rm sandbox claude --dangerously-skip-permissions -p "$HEADLESS_PROMPT"
         ;;
@@ -664,7 +666,7 @@ case "$LAUNCH_MODE" in
         print_ok "Launching: $PROJECT_NAME (shell)"
         echo ""
         docker compose \
-            -f "$SCRIPT_DIR/docker-compose.yml" \
+            -f "$DOCKER_DIR/docker-compose.yml" \
             -f "$PROJECT_DIR/compose.yml" \
             run --rm sandbox bash
         ;;

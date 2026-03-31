@@ -1,10 +1,11 @@
 # Project: test
+# Paths are relative to docker/ (where the base docker-compose.yml lives)
 services:
   sandbox:
     volumes:
-      - ./input:/workspace/input:ro
-      - ./output:/workspace/output
-      - ./projects/test/cases:/workspace/cases
+      - ../input:/workspace/input:ro
+      - ../output:/workspace/output
+      - ../projects/test/cases:/workspace/cases
       # Empty workspace
     tmpfs:
       - /workspace/temp:size=2G,uid=1000,gid=1000

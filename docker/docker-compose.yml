@@ -1,11 +1,11 @@
 services:
   sandbox:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile
     image: claude-sandbox:latest
     container_name: claude-sandbox
-    env_file: .env
+    env_file: ../.env
     environment:
       - TERM=xterm-256color
     cap_add:

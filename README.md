@@ -66,6 +66,21 @@ The setup wizard walks through:
 ./run.sh --build
 ```
 
+### USB Passthrough
+
+USB devices can be selected during `./setup.sh` or passed at runtime:
+
+```bash
+# Scan and pick devices interactively
+./run.sh my-project --usb
+
+# Pass all USB devices
+./run.sh my-project --usb-all
+
+# Pass a specific device by path
+./run.sh my-project --device /dev/bus/usb/001/003
+```
+
 ### Profiles
 
 ```bash
@@ -95,15 +110,17 @@ Built-in profiles:
 
 ```
 epoxy/
-├── setup.sh              # Interactive project wizard
 ├── run.sh                # Multi-project CLI
-├── Dockerfile            # Sandbox image (Debian Bookworm)
-├── docker-compose.yml    # Base compose (auth volumes, security)
-├── entrypoint.sh         # Boot: auth restore, firewall, updates, deps
-├── init-firewall.sh      # iptables egress allowlist
-├── auto-deps.sh          # Detects Go/Node/Python/Rust deps
-├── claude-settings.json  # Claude Code permissions for sandbox
+├── setup.sh              # Interactive project wizard
 ├── CLAUDE.md             # In-container instructions for Claude
+├── docker/               # Docker build context
+│   ├── Dockerfile        # Sandbox image (Debian Bookworm)
+│   ├── docker-compose.yml# Base compose (auth volumes, security)
+│   ├── entrypoint.sh     # Boot: auth restore, firewall, updates, deps
+│   ├── init-firewall.sh  # iptables egress allowlist
+│   ├── auto-deps.sh      # Detects Go/Node/Python/Rust deps
+│   ├── claude-settings.json # Claude Code permissions for sandbox
+│   └── udev-rules/       # USB device rules
 ├── profiles/             # Named config profiles
 └── projects/             # Per-project config and data
     ├── .auth.env         # Shared auth (gitignored)

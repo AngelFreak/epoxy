@@ -3,17 +3,10 @@
 projects/.auth.env
 projects/*/project.env
 
-# ── Generated at launch ───────────────────────────────────────────
-docker-compose.override.yml
-
 # ── Per-project runtime data ──────────────────────────────────────
 projects/*/cases/
 projects/*/snapshot/
 projects/*/metadata.json
-
-# ── Legacy (pre-multi-project) ────────────────────────────────────
-project-snapshot/
-cases/
 
 # ── Host-mounted directories ─────────────────────────────────────
 input/
@@ -21,9 +14,6 @@ output/
 exports/
 
 # ── Build artifacts & session state ───────────────────────────────
-Dockerfile.project
-Dockerfile.sdr
-.session/
 *.log
 
 # ── Claude Code local settings ────────────────────────────────────

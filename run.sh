@@ -22,13 +22,16 @@ DELETE_TARGET=""
 DIND=false
 EXTRA_ENV=()
 EXTRA_VOLUMES=()
+EXTRA_DEVICES=()
 NO_FIREWALL=0
 NO_LOG=0
 NO_DEPS=0
 NO_UPDATE=0
 PIN_VERSION=0
+USB_MODE=""
 
 PROJECTS_DIR="$SCRIPT_DIR/projects"
+DOCKER_DIR="$SCRIPT_DIR/docker"
 
 # ── Usage ───────────────────────────────────────────────────────────
 usage() {
@@ -53,6 +56,9 @@ Options:
   --profile NAME            Load a named profile
   --profile NAME --save     Save current flags as a profile
   --dind                    Enable Docker-in-Docker
+  --usb                     Scan and select USB devices to pass through
+  --usb-all                 Pass all USB devices through
+  --device PATH             Pass a specific device (e.g. /dev/bus/usb/001/003)
   --no-firewall             Disable egress firewall
   --no-log                  Disable terminal logging
   --no-deps                 Skip dependency auto-detection
@@ -66,6 +72,8 @@ Examples:
   ./setup.sh                            # Create a new project
   ./run.sh my-firmware                  # Resume a project
   ./run.sh my-firmware --shell          # Shell into project
+  ./run.sh my-firmware --usb            # Resume with USB device selection
+  ./run.sh my-firmware --device /dev/bus/usb/001/003
   ./run.sh my-firmware "review main.c"  # Headless prompt
   ./run.sh --list                       # Show all projects
   ./run.sh --delete old-project         # Remove a project
@@ -316,6 +324,62 @@ list_profiles() {
     done
 }
 
+# ── USB Device Scanning ─────────────────────────────────────────────
+declare -A VENDOR_CATEGORY=(
+    ["0403"]="Serial"   ["067b"]="Serial"   ["10c4"]="Serial"
+    ["1a86"]="Serial"   ["2341"]="Serial"
+    ["1366"]="Debug"    ["0483"]="Debug"
+    ["0781"]="Storage"  ["0951"]="Storage"
+)
+declare -A VENDOR_SKIP=(["1d6b"]="1" ["0000"]="1")
+
+scan_usb_devices() {
+    local devices=()
+    if ! command -v lsusb &>/dev/null; then
+        echo -e "  ${RED}lsusb not found on host${NC}"
+        return 1
+    fi
+
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        if [[ "$line" =~ Bus\ ([0-9]+)\ Device\ ([0-9]+):\ ID\ ([0-9a-f]+):([0-9a-f]+)\ (.+) ]]; then
+            local bus="${BASH_REMATCH[1]}" dev="${BASH_REMATCH[2]}"
+            local vid="${BASH_REMATCH[3]}" pid="${BASH_REMATCH[4]}" desc="${BASH_REMATCH[5]}"
+            [[ -n "${VENDOR_SKIP[$vid]:-}" ]] && continue
+            local category="${VENDOR_CATEGORY[$vid]:-Other}"
+            devices+=("${bus}|${dev}|${vid}|${pid}|${desc}|${category}")
+        fi
+    done < <(lsusb 2>/dev/null || true)
+
+    if [ "${#devices[@]}" -eq 0 ]; then
+        echo -e "  ${DIM}No USB devices found${NC}"
+        return 1
+    fi
+
+    echo -e "  ${BOLD}USB devices:${NC}"
+    echo ""
+    for i in "${!devices[@]}"; do
+        IFS='|' read -r bus dev vid pid desc category <<< "${devices[$i]}"
+        printf "    ${CYAN}%2d)${NC} [%-7s] %s:%s  %s\n" "$((i+1))" "$category" "$vid" "$pid" "$desc"
+    done
+    echo ""
+
+    read -rp "  Select devices (space-separated, or 'a' for all): " selection
+    if [[ "$selection" == "a" || "$selection" == "A" ]]; then
+        EXTRA_DEVICES+=("--device=/dev/bus/usb")
+        echo -e "  ${GREEN}✓${NC} All USB devices"
+    else
+        for sel in $selection; do
+            local idx=$((sel - 1))
+            if [ "$idx" -ge 0 ] && [ "$idx" -lt "${#devices[@]}" ]; then
+                IFS='|' read -r bus dev vid pid desc category <<< "${devices[$idx]}"
+                EXTRA_DEVICES+=("--device=/dev/bus/usb/${bus}/${dev}")
+                echo -e "  ${GREEN}✓${NC} $desc"
+            fi
+        done
+    fi
+}
+
 # ── Parse Args ──────────────────────────────────────────────────────
 POSITIONAL=()
 while [[ $# -gt 0 ]]; do
@@ -337,6 +401,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         --profiles)     MODE="list-profiles" ;;
         --dind)         DIND=true ;;
+        --usb)          USB_MODE="select" ;;
+        --usb-all)      USB_MODE="all" ;;
+        --device)       EXTRA_DEVICES+=("--device=${2:?--device requires a path}"); shift ;;
         --no-firewall)  NO_FIREWALL=1 ;;
         --no-log)       NO_LOG=1 ;;
         --no-deps)      NO_DEPS=1 ;;
@@ -357,6 +424,12 @@ if [ -n "$PROFILE_NAME" ]; then
     fi
     load_profile "$PROFILE_NAME"
 fi
+
+# ── USB Device Selection ────────────────────────────────────────────
+case "${USB_MODE}" in
+    select) scan_usb_devices ;;
+    all)    EXTRA_DEVICES+=("--device=/dev/bus/usb"); echo -e "${GREEN}✓${NC} All USB devices" ;;
+esac
 
 # ── Resolve project from positional args ────────────────────────────
 # First positional arg: if it matches a project dir, use it as project name.
@@ -389,7 +462,7 @@ migrate_legacy
 compose_run() {
     local project_dir="$PROJECTS_DIR/$ACTIVE_PROJECT"
     local cmd=("docker" "compose"
-        "-f" "$SCRIPT_DIR/docker-compose.yml"
+        "-f" "$DOCKER_DIR/docker-compose.yml"
         "-f" "$project_dir/compose.yml"
         "run" "--rm")
 
@@ -408,6 +481,11 @@ compose_run() {
     # Extra env and volumes from profile
     cmd+=("${EXTRA_ENV[@]}")
     cmd+=("${EXTRA_VOLUMES[@]}")
+
+    # USB devices
+    for dev in "${EXTRA_DEVICES[@]}"; do
+        cmd+=("$dev")
+    done
 
     cmd+=("sandbox")
     cmd+=("$@")
@@ -454,7 +532,7 @@ case "$MODE" in
 
     build)
         echo -e "${BOLD}${CYAN}Building sandbox image...${NC}"
-        docker compose build
+        docker compose -f "$DOCKER_DIR/docker-compose.yml" build
         echo -e "${GREEN}Build complete.${NC}"
         ;;
 
@@ -479,7 +557,7 @@ case "$MODE" in
         fi
 
         docker compose \
-            -f "$SCRIPT_DIR/docker-compose.yml" \
+            -f "$DOCKER_DIR/docker-compose.yml" \
             -f "$PROJECTS_DIR/$ACTIVE_PROJECT/compose.yml" \
             run --rm --no-deps -T sandbox \
             tar cf - -C "$(dirname "${EXPORT_PATH:-/workspace/project}")" "$(basename "${EXPORT_PATH:-/workspace/project}")" \
@@ -492,7 +570,7 @@ case "$MODE" in
 
     down)
         echo -e "${YELLOW}Stopping sandbox...${NC}"
-        docker compose down
+        docker compose -f "$DOCKER_DIR/docker-compose.yml" down
         echo -e "${GREEN}Sandbox stopped.${NC}"
         ;;
 
