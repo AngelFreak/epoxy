@@ -1,12 +1,10 @@
 # ── Secrets & credentials ──────────────────────────────────────────
 .env
 projects/.auth.env
-projects/*/project.env
 
-# ── Per-project runtime data ──────────────────────────────────────
-projects/*/cases/
-projects/*/snapshot/
-projects/*/metadata.json
+# ── Per-project data (ignore all, then un-ignore example) ────────
+projects/*/
+!projects/example/
 
 # ── Host-mounted directories ─────────────────────────────────────
 input/

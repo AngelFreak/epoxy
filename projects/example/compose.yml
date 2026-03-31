@@ -1,0 +1,26 @@
+# Example project compose override
+# Paths are relative to docker/ (where the base docker-compose.yml lives)
+#
+# Copy this directory to create a new project:
+#   cp -r projects/example projects/my-project
+#   # Edit compose.yml and project.env, then:
+#   ./run.sh my-project
+#
+# Or use the setup wizard:
+#   ./setup.sh
+services:
+  sandbox:
+    volumes:
+      - ../input:/workspace/input:ro
+      - ../output:/workspace/output
+      - ../projects/example/cases:/workspace/cases
+      # Uncomment ONE of the following:
+      # - ../projects/example/snapshot:/workspace/project   # copied snapshot
+      # - /path/to/your/code:/workspace/project             # bind mount (rw)
+      # - /path/to/your/code:/workspace/project:ro          # bind mount (ro)
+    tmpfs:
+      - /workspace/temp:size=2G,uid=1000,gid=1000
+    deploy:
+      resources:
+        limits:
+          memory: 8g
